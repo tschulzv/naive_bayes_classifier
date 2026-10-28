@@ -13,6 +13,38 @@ from collections import defaultdict
 import re
 import math
 
+# palabras comunes en ingles que no deben tenerse en cuenta
+STOPWORDS = {
+    "a", "an", "the", "and", "or", "but", "if", "while",
+    "as", "at", "by", "for", "in", "of", "on", "to",
+    "up", "with", "from", "into", "over", "after", "before",
+    "between", "under", "through", "during", "about", "against",
+    "above", "below", "out", "off", "down", "near", "once",
+
+    "is", "am", "are", "was", "were", "be", "been", "being",
+    "have", "has", "had", "do", "does", "did",
+    "can", "could", "will", "would", "shall", "should",
+    "may", "might", "must",
+
+    "i", "me", "my", "mine", "we", "us", "our", "ours",
+    "you", "your", "yours", "he", "him", "his",
+    "she", "her", "hers", "it", "its", "they", "them",
+    "their", "theirs", "this", "that", "these", "those",
+
+    "what", "which", "who", "whom", "whose", "when", "where",
+    "why", "how", "all", "any", "both", "each", "few",
+    "more", "most", "other", "some", "such", "no", "nor",
+    "not", "only", "own", "same", "so", "than", "too",
+    "very", "also", "just", "now", "here", "there",
+
+    "again", "ever", "never", "always", "often", "sometimes",
+    "already", "still", "yet", "really", "quite", "rather",
+    "much", "many", "less", "least", "almost", "even",
+
+    "s", "t", "d", "ll", "m", "re", "ve"
+}
+
+
 ##
 #  Modelo: guarda datos para clasificar
 #
@@ -61,18 +93,17 @@ def entrenar(modelo, archivos, clase, K) :
    for ruta in archivos:
       # abrir el archivo y leer el contenido
       # with cierra automaticamente el archivo 
-      # **** probar con utf-8, si no con latin-1
       try:
          with open(ruta, 'r', encoding='utf-8', errors='ignore') as f:
             contenido = f.read()
       except (IOError, OSError) as e:
             print(f"Error al leer {ruta}: {e}")
-            return None
+            continue # continuar entrenando con otro archivo
 
       c["cant_documentos"] += 1
       modelo.total_documentos += 1
-      # tokenizar en palabras
-      palabras = tokenizar(contenido)
+      # tokenizar en palabras, ignorando stopwords
+      palabras = [p for p in tokenizar(contenido) if p not in STOPWORDS]
 
       for p in palabras:
          # aumentar el conteo de la palabra
@@ -102,7 +133,8 @@ def clasificar(modelo, archivo, K) :
          print(f"Error al leer {archivo}: {e}")
          return None
 
-   palabras = tokenizar(contenido)
+   # tokenizar en palabras, ignorando stopwords
+   palabras = [p for p in tokenizar(contenido) if p not in STOPWORDS]
    v = len(modelo.vocabulario)
    
    mayor_probabilidad = float('-inf')
@@ -123,9 +155,9 @@ def clasificar(modelo, archivo, K) :
          p_palabra = ((conteo + K) / (clase["total_palabras"] + K * v))
          log_clase += math.log(p_palabra)
 
-         # si es la probabilidad mas alta, actualizar
-         if log_clase > mayor_probabilidad:
-            mayor_probabilidad = log_clase
-            mayor_clase = nombre
+      # si es la probabilidad mas alta, actualizar
+      if log_clase > mayor_probabilidad:
+         mayor_probabilidad = log_clase
+         mayor_clase = nombre
    
    return mayor_clase
